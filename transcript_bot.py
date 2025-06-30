@@ -20,28 +20,10 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
 WHISPER_MODEL = "base"
 
 # Auto-detect or set the path to the ffmpeg executable
-IS_CLOUD_SHELL = os.environ.get("CLOUD_SHELL", "") == "true"
-IS_GITHUB_ACTIONS = os.environ.get("GITHUB_ACTIONS", "") == "true"
-
 if os.name == 'nt': # Windows
     FFMPEG_PATH = r"C:\ProgramData\chocolatey\bin"
-else:
+else: # Linux, MacOS, etc.
     FFMPEG_PATH = "/usr/bin"
-    if IS_CLOUD_SHELL or IS_GITHUB_ACTIONS:
-        FFMPEG_PATH = "/usr/bin"  # Default location in Linux/Cloud Shell/GitHub Actions
-        # If running in GitHub Actions, we'll need to install ffmpeg - but with sudo
-        if IS_GITHUB_ACTIONS:
-            try:
-                def log(msg, level="info"):
-                    print(f"[{level.upper()}] {msg}")
-                log("Checking if ffmpeg is already installed...", "info")
-                import subprocess
-                ffmpeg_check = subprocess.run(['ffmpeg', '-version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                log("ffmpeg is already installed.", "info")
-            except Exception:
-                log("ffmpeg not found, will be installed by the workflow instead", "info")
-                # Note: We don't try to install it here as we need sudo privileges
-                # It will be installed by the GitHub Action workflow
 os.environ["PATH"] += os.pathsep + FFMPEG_PATH
 
 
