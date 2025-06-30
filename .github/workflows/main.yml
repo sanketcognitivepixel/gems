@@ -1,0 +1,132 @@
+name: sp
+
+on:
+  schedule:
+    - cron: '30 13 * * *'  # Run daily at 13:30 UTC
+  workflow_dispatch:     # Allow manual triggering
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1200  # 20 hours timeout for long-running tasks
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # Use latest version
+      
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5 # Use latest version
+        with:
+          python-version: '3.12.3'
+          cache: 'pip'
+
+      - name: Install system dependencies
+        run: |
+          # Install required system packages for Ubuntu Noble (24.04)
+          sudo apt-get update
+          sudo apt-get install -y wget unzip xvfb libxss1 libxtst6 libnss3 libatk1.0-0 \
+            libcups2 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libxkbcommon0 \
+            libatspi2.0-0 libx11-xcb1 libasound2t64 libatk-bridge2.0-0
+          
+          # Install Chrome
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          
+          # Verify installations
+          echo "Chrome version: $(google-chrome --version)"
+          
+          # Set up virtual display for headless mode
+          sudo Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+          export DISPLAY=:99
+          
+          # Set Chrome binary location
+          echo "CHROME_PATH=$(which google-chrome)" >> $GITHUB_ENV
+          
+          # Debug info
+          echo "Chrome binary location: $(which google-chrome)"
+          echo "DISPLAY set to: $DISPLAY"
+                
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install "undetected-chromedriver>=3.5.5" --no-cache-dir
+          pip install -r requirements.txt
+          
+          # Debug info
+          python -c "import undetected_chromedriver as uc; print(f'Undetected ChromeDriver version: {uc.__version__}')"
+     
+      - name: Download proxies
+        run: |
+          # Download fresh proxies from free proxy list
+          python -c "
+          import requests
+          import random
+          import time
+          
+          user_agents = [
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
+              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15'
+          ]
+          
+          headers = {'User-Agent': random.choice(user_agents)}
+          
+          sources = [
+              'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt',
+              'https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/http.txt',
+              'https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/http.txt'
+          ]
+          
+          proxies = set()
+          
+          for source in sources:
+              try:
+                  response = requests.get(source, headers=headers, timeout=15)
+                  if response.status_code == 200:
+                      new_proxies = [line.strip() for line in response.text.splitlines() if line.strip()]
+                      proxies.update(new_proxies)
+                      print(f'Downloaded {len(new_proxies)} proxies from {source}')
+                  else:
+                      print(f'Failed to download from {source}, status code: {response.status_code}')
+                  time.sleep(random.uniform(1, 2))
+              except Exception as e:
+                  print(f'Error downloading from {source}: {e}')
+          
+          with open('proxies.txt', 'w') as f:
+              for proxy in proxies:
+                  f.write(f'{proxy}\\n')
+          
+          print(f'Saved {len(proxies)} unique proxies to proxies.txt')
+          "
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          ffmpeg -version
+      - name: Run transcript_bot.py
+        # This 'env' block makes secrets available as environment variables to the script
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          # The DISPLAY and CHROME_PATH variables are inherited from the GITHUB_ENV file
+        run: |
+          # Debugging: Show the environment variables are set
+          echo "Using Chrome binary at: $CHROME_PATH"
+          echo "Display is set to: $DISPLAY"
+          
+          # The API_BASE_URL will be masked in the logs, but your script can access it
+          echo "API_BASE_URL is set (value is hidden)"
+
+          # Run the main script
+          python transcript_bot.py
+      
+      - name: Upload results
+        # This step will run even if the previous step fails, ensuring you get logs for debugging
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraping-results
+          path: |
+            ads_data.json
+            logs/
