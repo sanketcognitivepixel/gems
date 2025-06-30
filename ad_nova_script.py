@@ -31,17 +31,16 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
 
 # Platform identification mapping (unchanged)
 PLATFORM_MAPPING = {
-    ("https://static.xx.fbcdn.net/rsrc.php/v4/yV/r/OLar8kmsCmm.png", "0px -1188px"): "Facebook",
-    ("https://static.xx.fbcdn.net/rsrc.php/v4/yV/r/OLar8kmsCmm.png", "0px -1201px"): "Instagram",
-    ("https://static.xx.fbcdn.net/rsrc.php/v4/yO/r/ZuVkzM77JQ-.png", "-68px -189px"): "Audience Network",
-    ("https://static.xx.fbcdn.net/rsrc.php/v4/yy/r/EO9s8gfP1O0.png", "-260px -670px"): "Messenger",
-    ("https://static.xx.fbcdn.net/rsrc.php/v4/yO/r/ZuVkzM77JQ-.png", "-56px -206px"): "Financial products and services",
-    ("https://static.xx.fbcdn.net/rsrc.php/v4/yV/r/OLar8kmsCmm.png", "0px -1214px"): "Thread"
+    ("https://static.xx.fbcdn.net/rsrc.php/v4/yM/r/pXhSI5NPk5a.png", "0px -1171px"): "Facebook",
+    ("https://static.xx.fbcdn.net/rsrc.php/v4/y7/r/d58-isbYbM9.png", "-17px -471px"): "Instagram",
+    ("https://static.xx.fbcdn.net/rsrc.php/v4/y3/r/r35dp7ubbrO.png", "-16px -528px"): "Audience Network",
+    ("https://static.xx.fbcdn.net/rsrc.php/v4/y3/r/r35dp7ubbrO.png", "-29px -528px"): "Messenger",
+    ("https://static.xx.fbcdn.net/rsrc.php/v4/yM/r/pXhSI5NPk5a.png", "0px -1184px"): "Thread"
 }
 CATEGORY_MAPPING = {
-    ("https://static.xx.fbcdn.net/rsrc.php/v4/y5/r/7Ia52m_bDk0.png", "-189px -384px"): "Employment",
-    ("https://static.xx.fbcdn.net/rsrc.php/v4/y5/r/7Ia52m_bDk0.png", "-32px -401px"): "Housing",
-    ("https://static.xx.fbcdn.net/rsrc.php/v4/yO/r/ZuVkzM77JQ-.png", "-56px -206px"): "Financial products and services",
+    ("https://static.xx.fbcdn.net/rsrc.php/v4/y3/r/r35dp7ubbrO.png", "-65px -557px"): "Employment",
+    ("https://static.xx.fbcdn.net/rsrc.php/v4/y3/r/r35dp7ubbrO.png", "0px -544px"): "Housing",
+    ("https://static.xx.fbcdn.net/rsrc.php/v4/y3/r/r35dp7ubbrO.png", "-13px -557px"): "Financial products and services",
 }
 
 
