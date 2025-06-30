@@ -2,7 +2,7 @@ name: Gems
 
 on:
   schedule:
-    - cron: '30 13 * * *'  # Run daily at 10:30 AM UTC (4:00 PM Indian time - UTC+5:30)
+    - cron: '30 13 * * *'  # Run daily at 13:30 UTC
   workflow_dispatch:     # Allow manual triggering
 
 jobs:
@@ -12,60 +12,45 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # Use latest version
       
       - name: Set up Python 3.12
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # Use latest version
         with:
           python-version: '3.12.3'
           cache: 'pip'
-          check-latest: true
-      
-      - name: Install system dependencies
+
+      - name: Install system dependencies and Chrome
         run: |
-          # Install required system packages for Ubuntu Noble (24.04)
+          # Install required system packages
           sudo apt-get update
-          sudo apt-get install -y wget unzip xvfb libxss1 libxtst6 libnss3 libatk1.0-0 \
-            libcups2 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libxkbcommon0 \
-            libatspi2.0-0 libx11-xcb1 libasound2t64 libatk-bridge2.0-0
-          
-          # Install Chrome
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get install -y wget unzip xvfb libxi6 libgconf-2-4 libnss3 libatk-bridge2.0-0 libgtk-3-0 libasound2
+
+          # Install Google Chrome (using modern, non-deprecated method)
+          sudo wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg
+          sudo sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list'
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
+
+          # Verify installation
+          google-chrome --version
           
-          # Verify installations
-          echo "Chrome version: $(google-chrome --version)"
+          # Set up virtual display for headless mode and make it available to subsequent steps
+          Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+          echo "DISPLAY=:99" >> $GITHUB_ENV
           
-          # Set up virtual display for headless mode
-          sudo Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-          export DISPLAY=:99
-          
-          # Set Chrome binary location
+          # Set Chrome binary location and make it available to subsequent steps
           echo "CHROME_PATH=$(which google-chrome)" >> $GITHUB_ENV
           
-          # Debug info
-          echo "Chrome binary location: $(which google-chrome)"
-          echo "DISPLAY set to: $DISPLAY"
-      
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          
-          # Install core dependencies first
-          pip install --upgrade setuptools wheel
-          
-          # Install undetected-chromedriver first with specific version
           pip install "undetected-chromedriver>=3.5.5" --no-cache-dir
-          
-          # Install other requirements
           pip install -r requirements.txt
           
           # Debug info
           python -c "import undetected_chromedriver as uc; print(f'Undetected ChromeDriver version: {uc.__version__}')"
      
-        
       - name: Download proxies
         run: |
           # Download fresh proxies from free proxy list
@@ -82,7 +67,6 @@ jobs:
           
           headers = {'User-Agent': random.choice(user_agents)}
           
-          # Try multiple sources for redundancy
           sources = [
               'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt',
               'https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/http.txt',
@@ -93,16 +77,17 @@ jobs:
           
           for source in sources:
               try:
-                  response = requests.get(source, headers=headers, timeout=10)
+                  response = requests.get(source, headers=headers, timeout=15)
                   if response.status_code == 200:
                       new_proxies = [line.strip() for line in response.text.splitlines() if line.strip()]
                       proxies.update(new_proxies)
                       print(f'Downloaded {len(new_proxies)} proxies from {source}')
-                  time.sleep(random.uniform(1, 3))  # Be nice to the servers
+                  else:
+                      print(f'Failed to download from {source}, status code: {response.status_code}')
+                  time.sleep(random.uniform(1, 2))
               except Exception as e:
                   print(f'Error downloading from {source}: {e}')
           
-          # Write to file
           with open('proxies.txt', 'w') as f:
               for proxy in proxies:
                   f.write(f'{proxy}\\n')
@@ -110,36 +95,25 @@ jobs:
           print(f'Saved {len(proxies)} unique proxies to proxies.txt')
           "
       
-
       - name: Run ad_nova_script.py
+        # This 'env' block makes secrets available as environment variables to the script
         env:
-          DISPLAY: ':99'
-          CHROME_PATH: /usr/bin/google-chrome
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          # The DISPLAY and CHROME_PATH variables are inherited from the GITHUB_ENV file
         run: |
-          # Set display for headless Chrome
-          export DISPLAY=:99
-          
-          # Verify Chrome is accessible
-          which google-chrome
-          google-chrome --version
-          
-          # Start Xvfb if not already running
-          if ! pgrep -x "Xvfb" > /dev/null; then
-            Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-            export DISPLAY=:99
-          fi
-          
-          # Set Chrome binary location for undetected-chromedriver
-          export CHROME_PATH=$(which google-chrome)
-          
-          # Debug info
+          # Debugging: Show the environment variables are set
           echo "Using Chrome binary at: $CHROME_PATH"
-          echo "DISPLAY: $DISPLAY"
+          echo "Display is set to: $DISPLAY"
           
-          # Run the script with a longer timeout
+          # The API_BASE_URL will be masked in the logs, but your script can access it
+          echo "API_BASE_URL is set (value is hidden)"
+
+          # Run the main script
           python ad_nova_script.py
       
       - name: Upload results
+        # This step will run even if the previous step fails, ensuring you get logs for debugging
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: scraping-results
