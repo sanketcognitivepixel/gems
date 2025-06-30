@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+openai-whisper
+torch
+numpy
+tqdm
+more-itertools
+transformers
+ffmpeg-python
+selenium
+webdriver-manager
+python-dateutil
+urllib3
+python-multipart
+diffusers
+accelerate
+Pillow
