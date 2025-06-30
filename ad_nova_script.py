@@ -102,30 +102,6 @@ def send_data_to_api(api_url, payload):
 
 
 
-# Chrome options
-import tempfile
-
-options = Options()
-# options.add_argument("--headless") 
-options.add_argument("--disable-gpu") 
-# options.add_argument("--start-maximized")
-options.add_argument("--window-size=1920,1080")
-options.add_argument("--log-level=3") 
-options.add_experimental_option('excludeSwitches', ['enable-logging']) 
-# Add unique user data dir for CI/CD
-options.add_argument(f'--user-data-dir={tempfile.mkdtemp()}')
-
-# driver
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
-wait = WebDriverWait(driver, 10) # Default wait time for elements (adjust as needed)
-
-# List of URLs to scrape
-URLS = [
-    "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&is_targeted_country=false&media_type=all&search_type=page&source=page-transparency-widget&view_all_page_id=101111318763935",
-    # Add more URLs here as needed
-    # "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&media_type=all&search_type=page&source=page-transparency-widget&view_all_page_id=291890253998008",
-]
 
 def extract_page_id(url):
     # Extract the page ID from the URL for output file naming
