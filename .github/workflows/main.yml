@@ -105,7 +105,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           ffmpeg -version
-      - name: Run ad_nova_script.py
+      - name: Run transcript_bot.py
         # This 'env' block makes secrets available as environment variables to the script
         env:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
@@ -119,7 +119,7 @@ jobs:
           echo "API_BASE_URL is set (value is hidden)"
 
           # Run the main script
-          python ad_nova_script.py
+          python transcript_bot.py
       
       - name: Upload results
         # This step will run even if the previous step fails, ensuring you get logs for debugging
