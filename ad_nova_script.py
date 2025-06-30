@@ -137,6 +137,7 @@ def scrape_ads(url):
     start_time = time.time()
 
     # Chrome options
+    import tempfile
     options = Options()
     # options.add_argument("--headless")
     options.add_argument("--disable-gpu")
@@ -144,6 +145,8 @@ def scrape_ads(url):
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--log-level=3")
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    # Add unique user data dir for CI/CD
+    options.add_argument(f'--user-data-dir={tempfile.mkdtemp()}')
 
     # driver
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
