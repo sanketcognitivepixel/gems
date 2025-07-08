@@ -153,6 +153,12 @@ def scrape_ads(url, driver_path):
 
     # --- Robust Main Execution Block ---
     try:
+        # --- Variable Initialization ---
+        current_page_id = None
+        competitor_name_from_search_box = None
+        total_ad_count_of_page = 0
+        ads_data = {}
+        total_child_ads_found = 0
         print(f"\n[START] Navigating to {url}...")
 
         # --- Driver Setup ---
@@ -673,14 +679,14 @@ def scrape_ads(url, driver_path):
         processing_time = time.time()
         print(f"\nData extraction finished in {processing_time - scroll_time:.2f} seconds.")
 
-        # Create final output with total count (unchanged)
+        # Construct the final output using the REAL scraped variables
         final_output = {
-            "competitor_name": "Example Competitor",
-            "no_of_ads": 100,
+            "competitor_name": competitor_name_from_search_box,
+            "no_of_ads": total_ad_count_of_page,
             "page_id": current_page_id,
-            "total_ads_found": 95,
-            "total_ads_processed": 95,
-            "ads_data": {"ad1": {}, "ad2": {}}, # dummy data
+            "total_ads_found": total_child_ads_found,
+            "total_ads_processed": len(ads_data), # The count of successfully processed ads
+            "ads_data": ads_data,                 # The REAL dictionary of scraped ads
             "page_link": url,
         }
         # [END OF YOUR SCRAPING LOGIC]
