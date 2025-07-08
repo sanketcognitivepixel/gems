@@ -31,11 +31,11 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
 
 # Platform identification mapping (unchanged)
 PLATFORM_MAPPING = {
-    ("https://static.xx.fbcdn.net/rsrc.php/v4/yM/r/pXhSI5NPk5a.png", "0px -1171px"): "Facebook",
-    ("https://static.xx.fbcdn.net/rsrc.php/v4/y7/r/d58-isbYbM9.png", "-17px -471px"): "Instagram",
+    ("https://static.xx.fbcdn.net/rsrc.php/v4/yW/r/TP7nCDju1B-.png", "0px -1171px"): "Facebook",
+    ("https://static.xx.fbcdn.net/rsrc.php/v4/yj/r/0dseWS3_nMM.png", "-34px -353px"): "Instagram",
     ("https://static.xx.fbcdn.net/rsrc.php/v4/y3/r/r35dp7ubbrO.png", "-16px -528px"): "Audience Network",
     ("https://static.xx.fbcdn.net/rsrc.php/v4/y3/r/r35dp7ubbrO.png", "-29px -528px"): "Messenger",
-    ("https://static.xx.fbcdn.net/rsrc.php/v4/yM/r/pXhSI5NPk5a.png", "0px -1184px"): "Thread"
+    ("https://static.xx.fbcdn.net/rsrc.php/v4/yW/r/TP7nCDju1B-.png", "0px -1184px"): "Thread"
 }
 CATEGORY_MAPPING = {
     ("https://static.xx.fbcdn.net/rsrc.php/v4/y3/r/r35dp7ubbrO.png", "-65px -557px"): "Employment",
@@ -558,28 +558,53 @@ def scrape_ads(url):
                     except Exception as e:
                         print(f"Error extracting media for ad {current_ad_id_for_logging}: {str(e)}")
 
-                    # Extract CTA Button text
                     try:
-                        # Find the div with the specific class that contains the CTA button
-                        cta_container = child_div.find_element(By.XPATH, './/div[contains(@class, "x6s0dn4 x2izyaf x78zum5 x1qughib x15mokao x1ga7v0g xde0f50 x15x8krk xexx8yu xf159sx xwib8y2 xmzvs34")]')
-                        
-                        # Look for the button text within the second div (with class x2lah0s)
-                        cta_div = cta_container.find_element(By.XPATH, './/div[contains(@class, "x2lah0s")]')
-                        
-                        # Find the text content within the button element
-                        # This targets the text that's inside the button's visible content area
-                        cta_text_element = cta_div.find_element(By.XPATH, './/div[contains(@class, "x8t9es0 x1fvot60 xxio538 x1heor9g xuxw1ft x6ikm8r x10wlt62 xlyipyv x1h4wwuj x1pd3egz xeuugli")]')
-                        cta_text = cta_text_element.text.strip()
-                        
-                        print("cta_text -->  ", cta_text)
-                        ad_data["cta_button_text"] = cta_text
-                    except NoSuchElementException:
-                        # print(f"CTA button not found for ad {current_ad_id_for_logging}")
-                        ad_data["cta_button_text"] = None
-                    except Exception as e:
-                        print(f"Error extracting CTA button text for ad {current_ad_id_for_logging}: {str(e)}")
-                        ad_data["cta_button_text"] = None
+                        # ① container that wraps headline + CTA area
+                        cta_container = child_div.find_element(
+                            By.XPATH,
+                            './/div[contains(@class, "x6s0dn4 x2izyaf x78zum5 x1qughib '
+                            'x15mokao x1ga7v0g xde0f50 x15x8krk xexx8yu xf159sx xwib8y2 xmzvs34")]'
+                        )
 
+                        # ② sub‑container that holds headline + legal copy
+                        head_line_container = cta_container.find_element(
+                            By.XPATH,
+                            './/div[contains(@class, "x1iyjqo2 x2fvf9 x6ikm8r x10wlt62 xt0b8zv")]'
+                        )
+
+                        # ③ CTA button div
+                        cta_div = cta_container.find_element(
+                            By.XPATH,
+                            './/div[contains(@class, "x2lah0s")]'
+                        )
+
+                        # -- CTA TEXT (existing)
+                        cta_text_element = cta_div.find_element(
+                            By.XPATH,
+                            './/div[contains(@class, "x8t9es0 x1fvot60 xxio538 x1heor9g '
+                            'xuxw1ft x6ikm8r x10wlt62 xlyipyv x1h4wwuj x1pd3egz xeuugli")]'
+                        )
+                        ad_data["cta_button_text"] = cta_text_element.text.strip()
+
+                        # -- HEADLINE TEXT (NEW) -----------------------------------------------
+                        try:
+                            headline_element = head_line_container.find_element(
+                                By.XPATH,
+                                './/div[contains(@class, "x6ikm8r x10wlt62 xlyipyv x1mcwxda")]'
+                            )
+                            ad_data["headline_text"] = headline_element.text.strip()
+                        except NoSuchElementException:
+                            ad_data["headline_text"] = None
+                        # ----------------------------------------------------------------------
+
+                    except NoSuchElementException:
+                        # No CTA container found ⇒ keep previous behaviour
+                        ad_data["cta_button_text"] = None
+                        ad_data["headline_text"] = None
+                    except Exception as e:
+                        print(f"Error extracting CTA or headline text for ad {current_ad_id_for_logging}: {str(e)}")
+                        ad_data["cta_button_text"] = None
+                        ad_data["headline_text"] = None
                     # Add to main dictionary with library_id as key
                     ads_data[library_id] = ad_data
                     total_processed += 1
