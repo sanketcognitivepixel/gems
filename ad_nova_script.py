@@ -731,43 +731,76 @@ def split_list_into_two(lst):
 
 def run_parallel_scraping():
     """
-    Main function to fetch URLs and run scraping in parallel
+    Fetches competitor URLs and runs the scraping process in a controlled parallel manner.
+
+    This function is designed to be robust for CI/CD environments like GitHub Actions.
+    It performs the following steps:
+    1. Fetches the list of URLs to be scraped from the API.
+    2. Performs a pre-emptive cleanup of today's data to prevent duplicates.
+       - If cleanup fails, the script will exit with an error status.
+    3. Uses a ThreadPoolExecutor to run the `scrape_ads` function for multiple URLs
+       concurrently, significantly speeding up the total execution time.
+    4. The number of concurrent browsers is configurable via an environment variable.
     """
-    print("Fetching competitor URLs from API...")
+    # --- Step 1: Fetch URLs to Process ---
+    print("\n" + "="*50)
+    print("--- Step 1: Fetching Competitor URLs from API ---")
+    print("="*50)
+    
     urls = fetch_competitors_urls()
     
     if not urls:
-        print("No URLs found to process.")
+        print("No URLs found to process. Exiting gracefully.")
         return
         
-    print(f"Found {len(urls)} URLs to process.")
-        # Get the base URL from the API URL
-    
-    # Clean up existing data for today
+    print(f"Successfully fetched {len(urls)} URLs to process.")
+
+    # --- Step 2: Pre-emptive Data Cleanup ---
+    print("\n" + "="*50)
+    print("--- Step 2: Cleaning up previous data for today ---")
+    print("="*50)
+
     if not cleanup_existing_data():
-        print("Warning: Cleanup of existing data failed, but continuing with data import...")
+        print("\nFATAL: Cleanup of existing data failed. Aborting the script to prevent data duplication.")
+        # Exit with a non-zero status code to signal an error in CI/CD pipelines
+        sys.exit(1)
+    
+    print("Cleanup successful. Proceeding to scrape new data.")
+
+    # --- Step 3: Scrape Ads in Parallel ---
+    print("\n" + "="*50)
+    print("--- Step 3: Starting Parallel Scraping ---")
+    print("="*50)
+    
+    # Control the maximum number of concurrent browsers.
+    # For a standard GitHub Actions runner (2-core CPU), 2 is a safe starting point.
+    # This can be overridden by setting a `MAX_WORKERS` environment variable.
+    try:
+        max_workers = int(os.getenv("MAX_WORKERS", "2"))
+    except ValueError:
+        print("Warning: Invalid MAX_WORKERS environment variable. Defaulting to 2.")
+        max_workers = 2
         
-    # Split URLs into two lists
-    first_half, second_half = split_list_into_two(urls)
-    
-    print(f"Processing {len(first_half)} URLs in first browser instance...")
-    print(f"Processing {len(second_half)} URLs in second browser instance...")
-    
-    # Create and start threads
-    thread1 = threading.Thread(target=process_urls_in_parallel, args=(first_half,))
-    thread2 = threading.Thread(target=process_urls_in_parallel, args=(second_half,))
+    print(f"Configured to run with a maximum of {max_workers} concurrent browsers.")
     
     start_time = time.time()
     
-    thread1.start()
-    thread2.start()
+    # Use a single ThreadPoolExecutor to manage all scraping tasks directly.
+    # This is much simpler and more direct than the previous nested-thread model.
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # The .map() function applies `scrape_ads` to each item in the `urls` list.
+        # It automatically handles distributing the work among the available threads.
+        executor.map(scrape_ads, urls)
     
-    # Wait for both threads to complete
-    thread1.join()
-    thread2.join()
+    end_time = time.time()
+    total_time = end_time - start_time
     
-    total_time = time.time() - start_time
-    print(f"\nTotal parallel execution time: {total_time:.2f} seconds.")
+    # --- Step 4: Completion Summary ---
+    print("\n" + "="*50)
+    print("--- Scraping Complete ---")
+    print("="*50)
+    print(f"All {len(urls)} URLs have been processed.")
+    print(f"Total parallel execution time: {total_time:.2f} seconds (~{total_time / 60:.2f} minutes).")
 
 if __name__ == "__main__":
     run_parallel_scraping()
