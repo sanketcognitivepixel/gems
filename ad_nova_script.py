@@ -22,6 +22,8 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 import os
+import sys
+from functools import partial
 
 # ============== CONFIGURATION =====================
 load_dotenv()
@@ -143,7 +145,7 @@ def extract_page_id(url):
     match = re.search(r'view_all_page_id=(\d+)', url)
     return match.group(1) if match else 'output'
 
-def scrape_ads(url):
+def scrape_ads(url, driver_path):
     print(f"\nNavigating to {url}...")
     driver = None  # Initialize driver to None
     start_time = time.time()
@@ -165,7 +167,8 @@ def scrape_ads(url):
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
 
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        service = Service(executable_path=driver_path)
+        driver = webdriver.Chrome(service=service, options=options)
         wait = WebDriverWait(driver, 10)
         
         # Set a timeout for the initial page load to prevent hangs
@@ -792,6 +795,17 @@ def run_parallel_scraping():
     
     print("Cleanup successful. Proceeding to scrape new data.")
 
+    # --- NEW: Pre-install the WebDriver ONCE ---
+    print("\n" + "="*50)
+    print("--- Pre-installing WebDriver ---")
+    print("="*50)
+    try:
+        driver_executable_path = ChromeDriverManager().install()
+        print(f"WebDriver cached successfully at: {driver_executable_path}")
+    except Exception as e:
+        print(f"\nFATAL: Failed to install Chrome Driver. Error: {e}")
+        sys.exit(1)
+
     # --- Step 3: Scrape Ads in Parallel ---
     print("\n" + "="*50)
     print("--- Step 3: Starting Parallel Scraping ---")
@@ -813,9 +827,11 @@ def run_parallel_scraping():
     # Use a single ThreadPoolExecutor to manage all scraping tasks directly.
     # This is much simpler and more direct than the previous nested-thread model.
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # The .map() function applies `scrape_ads` to each item in the `urls` list.
-        # It automatically handles distributing the work among the available threads.
-        executor.map(scrape_ads, urls)
+        # THE FIX: Create a partial function with the driver path already filled in
+        scrape_task_with_driver = partial(scrape_ads, driver_path=driver_executable_path)
+        
+        # Map the list of URLs to this new partial function
+        executor.map(scrape_task_with_driver, urls)
     
     end_time = time.time()
     total_time = end_time - start_time
