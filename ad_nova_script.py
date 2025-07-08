@@ -67,9 +67,45 @@ def sanitize_payload(payload):
     return payload
 
 
+def cleanup_existing_data():
+    """
+    Delete existing data for the current date before importing new data.
+    Returns True if cleanup was successful, False otherwise.
+    """
+    try:
+        # Get current date in YYYY-MM-DD format
+        full_api_url = API_BASE_URL
+
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        cleanup_url = f"{full_api_url}/api/cleanup-ads?delete_date={current_date}"
+        
+        print(f"\nCleaning up existing data for date: {current_date}")
+        response = requests.delete(cleanup_url, timeout=30)
+        response.raise_for_status()
+        
+        result = response.json()
+        print(f"Cleanup completed: {result.get('message')}")
+        print(f"Deleted records: {result.get('deleted_records')}")
+        return True
+        
+    except requests.exceptions.HTTPError as http_err:
+        print(f"Cleanup failed with HTTP error: {http_err}")
+        if 'response' in locals():
+            print(f"Status Code: {response.status_code}")
+            try:
+                print("Error Details:", response.json())
+            except json.JSONDecodeError:
+                print("Response Body:", response.text)
+    except requests.exceptions.RequestException as req_err:
+        print(f"An error occurred during cleanup: {req_err}")
+    
+    return False
+
+
 def send_data_to_api(api_url, payload):
     """
     Sends the processed ad data to the FastAPI endpoint.
+    First cleans up existing data for the current date.
     """
     try:
         print("\nSending data to API...")
@@ -705,7 +741,12 @@ def run_parallel_scraping():
         return
         
     print(f"Found {len(urls)} URLs to process.")
+        # Get the base URL from the API URL
     
+    # Clean up existing data for today
+    if not cleanup_existing_data():
+        print("Warning: Cleanup of existing data failed, but continuing with data import...")
+        
     # Split URLs into two lists
     first_half, second_half = split_list_into_two(urls)
     
