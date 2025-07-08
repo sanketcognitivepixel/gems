@@ -718,7 +718,7 @@ def process_urls_in_parallel(urls):
     Process a list of URLs using ThreadPoolExecutor
     Each thread has 2 worker pools (Right now if total link are 4 , then its devided 4 into 2 links list. and open 4 browser. Each thread has 2 worker. (each worker will open one browser))
     """
-    with ThreadPoolExecutor(max_workers=1) as executor:
+    with ThreadPoolExecutor(max_workers=2) as executor:
         executor.map(scrape_ads, urls)
 
 def split_list_into_two(lst):
