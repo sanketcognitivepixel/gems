@@ -734,7 +734,7 @@ def scrape_ads(url, driver_path):
             driver.quit()
 
 
-def fetch_competitors_urls(api_url=f'{API_BASE_URL}/api/get_competitors_url'):
+def fetch_competitors_urls(api_url=f'{API_BASE_URL}/api/get_competitors_url_git'):
     """
     Fetches the list of competitor URLs from the API
     """
