@@ -2,7 +2,7 @@ name: sp
 
 on:
   schedule:
-    - cron: '30 14 * * *'  # Run daily at 13:30 UTC
+    - cron: '30 20 * * *'  # Run daily at 13:30 UTC
   workflow_dispatch:     # Allow manual triggering
 
 jobs:
