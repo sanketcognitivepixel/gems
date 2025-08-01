@@ -29,7 +29,7 @@ from functools import partial
 load_dotenv()
 
 # The base URL of your FastAPI application
-API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://17e48ce0d095.ngrok-free.app")
 
 # Platform identification mapping (unchanged)
 PLATFORM_MAPPING = {
@@ -186,8 +186,62 @@ def scrape_ads(url, driver_path):
         
         print(f"[{url[-30:]}] Waiting for initial ad content to load...")
         initial_content_locator = (By.CSS_SELECTOR, 'div[class="xrvj5dj x18m771g x1p5oq8j xp48ta0 x18d9i69 xtssl2i xtqikln x1na6gtj x1jr1mh3 x15h0gye x7sq92a xlxr9qa"]')
-        wait.until(EC.presence_of_element_located(initial_content_locator))
-        print(f"[{url[-30:]}] ✅ Initial content loaded.")
+        try:
+            wait.until(EC.presence_of_element_located(initial_content_locator))
+            print(f"[{url[-30:]}] ✅ Initial content loaded.")
+        except TimeoutException:
+            print(f"[{url[-30:]}] Timeout waiting for initial content. Checking for '0 results' message...")
+            try:
+                # Check for the "0 results" element.
+                zero_results_locator = (By.XPATH, "//div[contains(text(), '0 results')]")
+                driver.find_element(*zero_results_locator)
+                print(f"[{url[-30:]}] ✅ Confirmed '0 results' on page. No ads to process.")
+
+                # If no ads are found, prepare and send a payload to the API to update the count to 0.
+                parsed_url = urlparse(url)
+                query_params = parse_qs(parsed_url.query)
+                current_page_id = query_params.get("view_all_page_id", [None])[0]
+                
+                competitor_name = "Unknown"
+                try:
+                    search_box_selectors = [
+                        (By.CSS_SELECTOR, 'input[placeholder="Search by keyword or advertiser"][type="search"]'),
+                        (By.XPATH, '//input[@type="search" and contains(@placeholder, "Search")]')
+                    ]
+                    for by, value in search_box_selectors:
+                        try:
+                            element = driver.find_element(by, value)
+                            competitor_name = element.get_attribute("value")
+                            if competitor_name:
+                                break
+                        except NoSuchElementException:
+                            continue
+                except Exception as e:
+                    print(f"Could not fetch competitor name from search box for '0 ads' case: {e}")
+
+                if competitor_name == "Unknown" and current_page_id:
+                    competitor_name = f"Competitor_{current_page_id}"
+
+                payload = {
+                    "competitor_name": competitor_name,
+                    "page_link": url,
+                    "no_of_ads": 0,
+                    "page_id": current_page_id,
+                    "total_ads_found": 0,
+                    "total_ads_processed": 0,
+                    "ads_data": {}
+                }
+                
+                api_url = f"{API_BASE_URL}/api/ad-details"
+                send_data_to_api(api_url, payload)
+                
+                # Exit the function since there's nothing more to scrape.
+                return
+
+            except NoSuchElementException:
+                # If "0 results" is not found, it was a genuine timeout. Re-raise it.
+                print(f"[{url[-30:]}] ❌ Timeout was not due to '0 results'. This is a genuine error.")
+                raise
 
         time.sleep(random.uniform(0.5, 1.5))  # Human-like delay
 
@@ -786,7 +840,7 @@ def run_parallel_scraping():
     if not urls:
         print("No URLs found to process. Exiting gracefully.")
         return
-        
+    urls = ["https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&view_all_page_id=358831854864382&search_type=page&media_type=all"]
     print(f"Successfully fetched {len(urls)} URLs to process.")
 
     # --- Step 2: Pre-emptive Data Cleanup ---
