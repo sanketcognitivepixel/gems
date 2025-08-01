@@ -840,7 +840,7 @@ def run_parallel_scraping():
     if not urls:
         print("No URLs found to process. Exiting gracefully.")
         return
-    urls = ["https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&view_all_page_id=358831854864382&search_type=page&media_type=all"]
+    # urls = ["https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&view_all_page_id=358831854864382&search_type=page&media_type=all"]
     print(f"Successfully fetched {len(urls)} URLs to process.")
 
     # --- Step 2: Pre-emptive Data Cleanup ---
