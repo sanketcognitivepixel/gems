@@ -11,6 +11,20 @@ jobs:
     timeout-minutes: 1200  # 20 hours timeout for long-running tasks
     
     steps:
+      - name: Free up disk space
+        run: |
+          echo "Initial disk usage:"
+          df -h
+          
+          # Remove big preinstalled packages
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          
+          echo "Disk usage after cleanup:"
+          df -h
+
       - name: Checkout code
         uses: actions/checkout@v4 # Use latest version
       
